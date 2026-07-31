@@ -7,11 +7,80 @@
 //
 
 #import "NMSpeechManager.h"
+#import <dispatch/dispatch.h>
 
 
 //
 //  英文テキスト読み上げ機能をサポートするためのクラス。
 //
+
+static BOOL VoiceNameEquals(const VoiceDescription *description, const char *name) {
+	size_t length = strlen(name);
+	return description->name[0] == length &&
+		memcmp(description->name + 1, name, length) == 0;
+}
+
+static BOOL FindEnglishVoice(VoiceSpec *selectedVoice) {
+	SInt16 voiceCount = 0;
+	VoiceSpec femaleUSVoice;
+	VoiceSpec femaleEnglishVoice;
+	VoiceSpec usVoice;
+	VoiceSpec englishVoice;
+	BOOL hasFemaleUSVoice = NO;
+	BOOL hasFemaleEnglishVoice = NO;
+	BOOL hasUSVoice = NO;
+	BOOL hasEnglishVoice = NO;
+
+	if (CountVoices(&voiceCount) != noErr) {
+		return NO;
+	}
+
+	for (SInt16 index = 1; index <= voiceCount; index++) {
+		VoiceSpec voice;
+		VoiceDescription description;
+		memset(&description, 0, sizeof(description));
+		description.length = sizeof(description);
+
+		if (GetIndVoice(index, &voice) != noErr ||
+			GetVoiceDescription(&voice, &description, sizeof(description)) != noErr ||
+			description.language != langEnglish) {
+			continue;
+		}
+
+		if (VoiceNameEquals(&description, "Samantha")) {
+			*selectedVoice = voice;
+			return YES;
+		}
+
+		if (description.gender == kFemale && description.region == verUS && !hasFemaleUSVoice) {
+			femaleUSVoice = voice;
+			hasFemaleUSVoice = YES;
+		}
+		if (description.gender == kFemale && !hasFemaleEnglishVoice) {
+			femaleEnglishVoice = voice;
+			hasFemaleEnglishVoice = YES;
+		}
+		if (description.region == verUS && !hasUSVoice) {
+			usVoice = voice;
+			hasUSVoice = YES;
+		}
+		if (!hasEnglishVoice) {
+			englishVoice = voice;
+			hasEnglishVoice = YES;
+		}
+	}
+
+	if (hasFemaleUSVoice) {
+		*selectedVoice = femaleUSVoice;
+	} else if (hasFemaleEnglishVoice) {
+		*selectedVoice = femaleEnglishVoice;
+	} else if (hasUSVoice) {
+		*selectedVoice = usVoice;
+	} else if (hasEnglishVoice) {
+		*selectedVoice = englishVoice;
+	}
+	return hasFemaleUSVoice || hasFemaleEnglishVoice || hasUSVoice || hasEnglishVoice;
+}
 
 @implementation NMSpeechManager
 
@@ -55,9 +124,11 @@
 // スピーチチャンネルの生成
 - (BOOL)createSpeechChannel {
     OSErr error;
+	VoiceSpec englishVoice;
+	VoiceSpec *voice = FindEnglishVoice(&englishVoice) ? &englishVoice : NULL;
 
 	// スピーチチャンネルの生成
-	error = NewSpeechChannel(NULL, &speechChannel);
+	error = NewSpeechChannel(voice, &speechChannel);
 	if (error != noErr) {
 		[self setError:error pos:-1];
 		return NO;
@@ -272,7 +343,9 @@ pascal void WordCallBackProc(
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NMSpeechManager *speechManager = (NMSpeechManager *) inRefCon;
-	[speechManager setCurrentSpeakingPos:inWordPos length:inWordLen];
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[speechManager setCurrentSpeakingPos:(int)inWordPos length:(int)inWordLen];
+	});
 	[pool release];
 }
 
@@ -281,7 +354,9 @@ pascal void SpeechDoneCallBackProc(SpeechChannel inSpeechChannel, long inRefCon)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NMSpeechManager *speechManager = (NMSpeechManager *) inRefCon;
-	[speechManager setSpeaking:NO];
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[speechManager setSpeaking:NO];
+	});
 	[pool release];
 }
 
@@ -291,7 +366,9 @@ pascal void ErrorCallBackProc(
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NMSpeechManager *speechManager = (NMSpeechManager *) inRefCon;
-	[speechManager setError:inError pos:inBytePos];
+	dispatch_async(dispatch_get_main_queue(), ^{
+		[speechManager setError:inError pos:(int)inBytePos];
+	});
 	[pool release];
 }
 
