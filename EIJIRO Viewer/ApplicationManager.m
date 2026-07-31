@@ -121,6 +121,7 @@ static BOOL isFirstRun;
 	[toolbar setAutosavesConfiguration:YES];
 	[toolbar setDelegate:self];
 	[mainWindow setToolbar:toolbar];
+	[mainWindow setToolbarStyle:NSWindowToolbarStyleExpanded];
 	
 	// 初回起動時はメインウィンドウを中央に移動して、ツールバーの表示モードをアイコンのみに設定
 	if (isFirstRun) {
@@ -827,7 +828,7 @@ static BOOL isFirstRun;
 }
 
 // メニュー項目のアクティベート
-- (BOOL)validateMenuItem:(id <NSMenuItem>)menuItem {
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
 	switch ([menuItem tag]) {
 		// 「前に戻る」
 		case 50: {

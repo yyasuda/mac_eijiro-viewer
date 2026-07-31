@@ -10,7 +10,7 @@
 
 
 // Shift-JIS における2バイト文字の先頭文字であるかどうかを判定する。
-inline BOOL isFirst2BytesCharacter(unsigned char c);
+BOOL isFirst2BytesCharacter(unsigned char c);
 
 // 2バイト文字を含む文字列かどうかを判定する。
 BOOL isEnglishWordC(const unsigned char *str, unsigned int length);

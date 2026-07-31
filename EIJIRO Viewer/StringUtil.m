@@ -10,7 +10,7 @@
 
 
 // Shift-JIS における2バイト文字の先頭文字であるかどうかを判定する。
-inline BOOL isFirst2BytesCharacter(unsigned char c) {
+BOOL isFirst2BytesCharacter(unsigned char c) {
 	return (c >= 0x80 && c <= 0x9f || c >= 0xe0 && c <= 0xfc);
 }
 
